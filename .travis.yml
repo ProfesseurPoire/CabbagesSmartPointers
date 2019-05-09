@@ -1,0 +1,37 @@
+# Ubuntu 14.04 Trusty support
+sudo: required
+dist: trusty
+
+language: cpp
+
+matrix:
+  include:
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+          before_instal:
+            - CC=gcc-6 && CXX=g++-6
+
+    - os: osx
+      osx_image: xcode9.2
+
+before_script:  
+    - mkdir install_folder
+    - install_path="$PWD"/install_folder
+    - git clone https://github.com/ProfesseurPoire/Cabbages-test
+    - cd Cabbages-test
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_INSTALL_PREFIX=${install_path} -DCMAKE_BUILD_TYPE=Debug
+    - make && make install
+    - cd ../..
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_PREFIX_PATH=${install_path} -DCMAKE_BUILD_TYPE=Debug 
+
+script: make && ctest -V
