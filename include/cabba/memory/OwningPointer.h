@@ -59,7 +59,7 @@ public:
     T* operator->() { return _ptr;  }
     T& operator*()  
     { 
-        assert(_ptr!=nullptr&&"OwningPointer stores a nullptr")
+        assert(_ptr != nullptr&&"OwningPointer stores a nullptr");
         return *_ptr; 
     }
 
@@ -149,6 +149,6 @@ ObserverPointer<U> OwningPointer<T>::create_derived_observer()
     // Creates a bool on the heap so the observer knows
     // if the pointer is still valid or not
     _alive = new bool(true);
-    return ObserverPointer<U>(static_cast<U**>(_track, _alive));
+    return ObserverPointer<U>(static_cast<U**>(_ptr, _alive));
 }
 }

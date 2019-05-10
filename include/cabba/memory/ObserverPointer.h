@@ -79,7 +79,7 @@ public:
     T& operator*()
     {
         if (_alive != nullptr)      // If this was registered to point to smt
-            if (*alive != false)    // If that something is still alive
+            if (*_alive != false)    // If that something is still alive
                 if (*_lived != nullptr) // if what's pointed is different to null
                     return **_lived;
     }
