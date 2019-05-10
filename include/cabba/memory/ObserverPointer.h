@@ -30,13 +30,16 @@ public:
 // Lifecycle
 
     ObserverPointer()                           = default;
-    ~ObserverPointer()                          {destroy(); }
-    ObserverPointer(const ObserverPointer& p)   {copy(p);}
-    ObserverPointer(ObserverPointer&& obs)      {move(obs)}
+    ~ObserverPointer()                              {destroy(); }
+    ObserverPointer(const ObserverPointer& p)       {copy(p);}
+    ObserverPointer(ObserverPointer&& obs) noexcept {move(obs);}
 
 // Assignment operators
 
-    ObserverPointer& operator=(ObserverPointer&& obs){ move(obs);return *this;}
+    ObserverPointer& operator=(ObserverPointer&& obs) noexcept
+    {
+        move(obs);return *this;
+    }
 
     ObserverPointer& operator=(const ObserverPointer& p)
     {
