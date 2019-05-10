@@ -1,7 +1,7 @@
 @setlocal enableextensions
 @cd /d "%~dp0"
 
-set project_path="C:/Program Files/SPointers"
+set project_path="C:/install/CabbagesSmartPointers"
 rd /s /q build
 
 rd /s /q %project_path%

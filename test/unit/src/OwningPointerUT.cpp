@@ -75,7 +75,7 @@ TEST_F(OwningPointerUT, destroy)
     auto ptr = make_owning_pointer<Foo>(10, 3);
     int val;
     ptr.get()->deleted = &val;
-    ptr.destroy();
+    ptr.replace(nullptr);
 
     // Means that the first object managed by the pointer really went
     // through the destructors

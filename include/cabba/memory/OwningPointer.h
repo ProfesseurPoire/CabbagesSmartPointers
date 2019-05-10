@@ -3,15 +3,23 @@
 #include <cabba/memory/ObserverPointer.h>
 #include <type_traits>
 #include <utility>
+#include <assert.h>
+
 
 namespace cabba
 {
-
 /*
  * @brief   Owns a pointer. The difference with std::unique_ptr is the
- *          observer mechanism. You can create Observers that points
- *          to this owningPointer. If the OwningPointer is deleted,
- *          the observers knows about this
+ *          observer mechanism. 
+ *          
+ *          You can create Observers that points to this owningPointer. 
+ *          Observers always knows what's inside the OwningPointer. Even when
+ *          the OwningPointer is deleted before the observers, observers will
+ *          point to a nullptr and thus knows that there's no more data.
+ *          
+ *          Remarks : Should I add another variable on the heap
+ *          to really notify the observers that the OwningPointer has been 
+ *          destroyed?
  */
 template<class T>
 class OwningPointer
@@ -23,15 +31,21 @@ public:
     OwningPointer() = default;
     OwningPointer(T* t) { _ptr = t; }
 
-    // Can't copy a Owning pointer around
+    // You can't copy an OwningPointer, only move it
     OwningPointer(const OwningPointer&) = delete;
-    OwningPointer(OwningPointer&& p) { move(p); }
+    OwningPointer(OwningPointer&& p)    { move(p); }
+    ~OwningPointer()                    
+    { 
+        replace(nullptr);
 
-    ~OwningPointer() { destroy(); }
+        // Notifies the observers that the current object is deleted
+        if (_alive)
+            *_alive= false;   
+    }
 
 // Asignment Operator
 
-    // Still can't copy a owning pointer
+    // You can't copy a OwningPointer, only move it
     OwningPointer& operator=(const OwningPointer&) = delete;
     OwningPointer& operator=(OwningPointer&& p)noexcept
     {
@@ -41,60 +55,34 @@ public:
 
 // Operators
 
-    T* operator->() { return _ptr;  }
-    T& operator*()  { return *_ptr; }
     operator bool() { return _ptr != nullptr; }
+    T* operator->() { return _ptr;  }
+    T& operator*()  
+    { 
+        assert(_ptr!=nullptr&&"OwningPointer stores a nullptr")
+        return *_ptr; 
+    }
 
 // Functions
     
     /*!
      * @brief   Returns a pointer to the managed object
      *
-     * @return  Returns the pointer to the managed object.
-     *          Returns nullptr if nothing is currently being managed
+     * @return  Returns a pointer to the managed object or nullptr if 
+     *          nothing is owned
      */
     T* get()    { return _ptr; }
 
     /*!
-     * @brief   Deletes the current managed object 
-     */
-    void destroy()
-    {
-        if (_lived != nullptr)
-            * _lived = false;
-
-        _lived = nullptr;
-
-        delete _ptr;
-        _ptr = nullptr;
-    }
-
-
-    /*!
      * @brief   Replace the current managed object, deleting the previous
      *          one in the process
-     *
-     *          If the param is set to nullptr, nothing happens. Observers
-     *          are broken in the process
+     * @param   ptr     Pointer to the object that will be managed
      */
-    void replace(T* new_ptr)
+    void replace(T* ptr)
     {
-        // If the new_ptr is equal to nullptr, nothing happens
-        if (new_ptr == nullptr)
-            return;
-
-        // If some observer exist, we tell them the data they were tracking
-        // doesn't exist anymore
-        if (_lived != nullptr)
-            *_lived = false;
-
-        // We set _lived back to nullptr since that's another object and
-        // new observers could be created for this object
-        _lived = nullptr;
-
         // We delete the old ptr and store the new one
         delete _ptr;
-        _ptr = new_ptr;
+        _ptr = ptr;
     }
 
     /*!
@@ -110,17 +98,12 @@ public:
     void release()
     {
         _ptr = nullptr;
-
-        if (_lived != nullptr)
-            *_lived = false;
     }
 
     ObserverPointer<T> create_observer()
     {
-        // Creates a thing in the heap to track if the 
-        // pointer is still valid or not
-        _lived = new bool(true);
-        return ObserverPointer<T>(_ptr, _lived);
+        _alive = new bool(true);  // Creates a thing to track on the heap
+        return ObserverPointer<T>(&_ptr, _alive);
     }
 
     template<class U>
@@ -132,36 +115,24 @@ private:
 
     void move(OwningPointer & p)
     {
-        if (_ptr != nullptr)
-            delete _ptr;
+        replace(p._ptr);
 
-        //Also has to kill the observers
-
-        if (_lived != nullptr)
-            *_lived = false;
-
-        _lived = nullptr;
-
-
-        if (p._lived != nullptr)
-            *p._lived = false;
-
-        _ptr        = p._ptr;
+        // The moved one though is dead now
+        if (p._alive != nullptr)
+            *p._alive= false;
 
         p._ptr      = nullptr;
-        p._lived    = nullptr;
+        p._alive     = nullptr;
     }
 
 // Member variables 
 
-    // I should really try to replace that with T** once
-    // the unit test are up 
-    bool*     _lived    = nullptr;  
+    // Tracks the owned pointer for the observers
+    bool* _alive        = nullptr;
                                 
     // Pointer to the data currently managed by the owning pointer
     T*      _ptr        = nullptr;
 };
-
 
 template<class T, typename... Args>
 OwningPointer<T> make_owning_pointer(Args&&... args)
@@ -177,8 +148,7 @@ ObserverPointer<U> OwningPointer<T>::create_derived_observer()
                   "Template parameter is not a base of observed Pointer");
     // Creates a bool on the heap so the observer knows
     // if the pointer is still valid or not
-    _lived = new bool(true);
-    return ObserverPointer<U>(static_cast<U*>(_ptr), _lived);
+    _alive = new bool(true);
+    return ObserverPointer<U>(static_cast<U**>(_track, _alive));
 }
-
 }
